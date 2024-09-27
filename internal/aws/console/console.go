@@ -14,6 +14,7 @@ import (
 	"github.com/aws-cloudformation/rain/internal/aws/cfn"
 	"github.com/aws-cloudformation/rain/internal/aws/sts"
 	"github.com/aws-cloudformation/rain/internal/config"
+	aws2 "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/smithy-go/ptr"
 )
 
@@ -22,10 +23,10 @@ var consoleURI string
 var signoutURI string
 
 const issuer = "https://aws-cloudformation.github.io/rain/rain_console.html"
-const defaultService = "cloudformation"
-const sessionDuration = 43200
+const defaultService = "cloudshell"
+const sessionDuration = 3600 // need to better handel roles that have session durations less than this
 
-func buildSessionString(sessionName string) (string, error) {
+func buildSessionString(sessionName, roleName string) (string, error) {
 	if sessionName == "" {
 		id, err := sts.GetCallerID()
 		if err != nil {
@@ -44,7 +45,30 @@ func buildSessionString(sessionName string) (string, error) {
 
 	config.Debugf("sessionName: %v", sessionName)
 
-	creds, err := aws.NamedConfig(sessionName).Credentials.Retrieve(context.Background())
+	var creds aws2.Credentials
+	var err error
+
+	if roleName != "" {
+		id, err := sts.GetCallerID()
+		if err != nil {
+			return "", err
+		}
+		roleArn := fmt.Sprintf("arn:aws:sts::%s:role/%s", *id.Account, roleName)
+		c, err := sts.AssumeRole(roleArn, sessionName, sessionDuration)
+		if err != nil {
+			return "", err
+		}
+		creds = aws2.Credentials{
+			AccessKeyID:     *c.AccessKeyId,
+			SecretAccessKey: *c.SecretAccessKey,
+			SessionToken:    *c.SessionToken,
+		}
+	} else {
+		creds, err = aws.NamedConfig(sessionName).Credentials.Retrieve(context.Background())
+		if err != nil {
+			return "", err
+		}
+	}
 	if err != nil {
 		return "", err
 	}
@@ -57,8 +81,8 @@ func buildSessionString(sessionName string) (string, error) {
 	return url.QueryEscape(unescaped), nil
 }
 
-func getSigninToken(userName string) (string, error) {
-	sessionString, err := buildSessionString(userName)
+func getSigninToken(userName, roleName string) (string, error) {
+	sessionString, err := buildSessionString(userName, roleName)
 	if err != nil {
 		config.Debugf("buildSessionString failed")
 		return "", err
@@ -119,8 +143,8 @@ func getSigninToken(userName string) (string, error) {
 }
 
 // GetURI returns a sign-in uri for the current credentials and region
-func GetURI(logout bool, service, stackName, userName string) (string, error) {
-	config.Debugf("GetURI %v, %v, %v", service, stackName, userName)
+func GetURI(logout bool, service, stackName, userName, roleName string) (string, error) {
+	config.Debugf("GetURI %v, %v, %v", service, stackName, userName, roleName)
 
 	region := aws.Config().Region
 
@@ -139,7 +163,7 @@ func GetURI(logout bool, service, stackName, userName string) (string, error) {
 		return signoutURI, nil
 	}
 
-	token, err := getSigninToken(userName)
+	token, err := getSigninToken(userName, roleName)
 	if err != nil {
 		config.Debugf("getSigninToken failed")
 		return "", err

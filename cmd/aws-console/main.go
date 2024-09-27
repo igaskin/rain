@@ -11,6 +11,7 @@ import (
 var printOnly = false
 var logout = false
 var userName = ""
+var roleName = ""
 
 // Cmd is the console command's entrypoint
 var Cmd = &cobra.Command{
@@ -29,7 +30,7 @@ Unless you specify the --name/-n flag, your AWS console user name will be derive
 			service = args[0]
 		}
 
-		console.Open(printOnly, logout, service, "", userName)
+		console.Open(printOnly, logout, service, "", userName, roleName)
 	},
 }
 
@@ -39,6 +40,7 @@ func init() {
 	Cmd.Flags().StringVarP(&config.Profile, "profile", "p", "", "AWS profile name; read from the AWS CLI configuration file")
 	Cmd.Flags().StringVarP(&config.Region, "region", "r", "", "AWS region to use")
 	Cmd.Flags().StringVarP(&userName, "name", "n", "", "Specify a user name to use in the AWS console")
+	Cmd.Flags().StringVarP(&roleName, "role", "", "", "Specify a role to assume before generating the sign-in URL")
 }
 
 func main() {

@@ -8,6 +8,7 @@ var printOnlyFlag = false
 var logoutFlag = false
 var serviceParam = "cloudformation"
 var userName = ""
+var roleName = ""
 
 // Cmd is the console command's entrypoint
 var Cmd = &cobra.Command{
@@ -28,7 +29,7 @@ Unless you specify the --name/-n flag, your AWS console user name will be derive
 			stackName = args[0]
 		}
 
-		Open(printOnlyFlag, logoutFlag, serviceParam, stackName, userName)
+		Open(printOnlyFlag, logoutFlag, serviceParam, stackName, userName, roleName)
 	},
 }
 
@@ -37,4 +38,5 @@ func init() {
 	Cmd.Flags().BoolVarP(&logoutFlag, "logout", "l", false, "Log out of the AWS console")
 	Cmd.Flags().StringVarP(&serviceParam, "service", "s", "cloudformation", "Choose an AWS service home page to launch")
 	Cmd.Flags().StringVarP(&userName, "name", "n", "", "Specify a user name to use in the AWS console")
+	Cmd.Flags().StringVarP(&roleName, "role", "", "", "Specify a role to assume before generating console URL")
 }

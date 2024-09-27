@@ -41,3 +41,19 @@ func GetAccountID() (string, error) {
 
 	return *id.Account, nil
 }
+
+// AssumeRole assumes a role and returns temporary security credentials
+func AssumeRole(roleArn string, roleSessionName string, durationSeconds int32) (*types.Credentials, error) {
+	input := &sts.AssumeRoleInput{
+		RoleArn:         &roleArn,
+		RoleSessionName: &roleSessionName,
+		DurationSeconds: &durationSeconds,
+	}
+
+	res, err := getClient().AssumeRole(context.Background(), input)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Credentials, nil
+}
